@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.triton_cache/
+triton_cache/
+prof/
+prof_out/
+*.bak
+*.log
+.DS_Store

@@ -1,0 +1,23 @@
+vllm-fp8-strix-halo-kernel-support
+Copyright 2026 Leon Yurkovski
+
+This product includes software developed as part of the vLLM project
+(https://github.com/vllm-project/vllm), licensed under the Apache License 2.0.
+
+The following files are MODIFIED versions of files originally from vLLM and/or the
+community `kyuz0/vllm-therock-gfx1151` image, redistributed here under Apache-2.0
+with the modifications described below:
+
+- pytorch_patched.py
+    Original: vllm/model_executor/kernels/linear/scaled_mm/pytorch.py (vLLM, Apache-2.0)
+    Modification: route FP8 (W8A8) matmuls to the custom Triton dequant-GEMV in
+    fp8_triton.py instead of torch._scaled_mm (which is unsupported on RDNA/gfx1151).
+
+- rocm_patched.py
+    Original: vllm/platforms/rocm.py (vLLM, Apache-2.0; the APU VRAM workaround
+    block originates from the kyuz0/vllm-therock-gfx1151 image).
+    Modification: _patched_mem_info reads BOTH mem_info_vram_total and
+    mem_info_gtt_total and uses max(...), so the dedicated-VRAM BIOS layout reports
+    the full pool (the stock patch read GTT only and broke that layout).
+
+fp8_triton.py and the scripts under bench/ are original work.
