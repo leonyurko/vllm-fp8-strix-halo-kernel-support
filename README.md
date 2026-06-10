@@ -77,13 +77,18 @@ roadmap.)
 
 ## Credits
 
-Diagnosis of the DRAM-page-locality root cause and the kernel-mapping fix was a
-collaboration with Anthropic's Claude models. `pytorch_patched.py` and
-`rocm_patched.py` are modified from [vLLM](https://github.com/vllm-project/vllm)
-(Apache-2.0) and the
+`pytorch_patched.py` and `rocm_patched.py` are modified from
+[vLLM](https://github.com/vllm-project/vllm) (Apache-2.0) and the
 [`kyuz0/vllm-therock-gfx1151`](https://github.com/kyuz0/amd-strix-halo-toolboxes)
 image — see [`NOTICE`](NOTICE).
 
 ## License
 
-[Apache-2.0](LICENSE).
+Source-available, **noncommercial**. The original work in this repository —
+`fp8_triton.py`, the scripts under `bench/`, and the docs — is licensed under
+[**PolyForm Noncommercial 1.0.0**](LICENSE): free for any noncommercial purpose;
+commercial use requires a separate license from the author.
+
+The two vLLM-derived files (`pytorch_patched.py`, `rocm_patched.py`) remain under
+the [**Apache License 2.0**](licenses/Apache-2.0.txt) as required by their upstream
+license — see [`NOTICE`](NOTICE).

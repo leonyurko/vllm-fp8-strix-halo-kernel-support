@@ -1,3 +1,7 @@
+# This file is a modified version of a vLLM source file.
+# Licensed under the Apache License, Version 2.0 (see licenses/Apache-2.0.txt and NOTICE).
+# Modifications: see NOTICE.
+
 
 # --- ROCM-21812 VRAM DYNAMIC PATCH ---
 import torch
