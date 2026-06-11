@@ -1,0 +1,8 @@
+format,model,loaded,quant,kernel,stock_tok_s,weight_gb,floor_tok_s,pct_floor
+awq_int4,Qwen/Qwen2.5-7B-Instruct-AWQ,yes,awq_marlin,AWQMarlinLinearMethod,25.48,0.0,0,?
+gptq_int4,Qwen/Qwen2.5-7B-Instruct-GPTQ-Int4,yes,gptq,,45.45,0.0,0,?
+ct_w4a16,RedHatAI/Qwen2.5-7B-Instruct-quantized.w4a16,yes,compressed,,10.92,0.0,0,?
+bnb_nf4,unsloth/Qwen2.5-7B-Instruct-bnb-4bit,no-run,,,,0.0,,
+nvfp4,RedHatAI/Qwen3-8B-NVFP4,yes,compressed,,0,0.0,0,?
+nvfp4b,nvidia/Llama-3.1-8B-Instruct-FP4,yes,modelopt_fp4,,0.42,0.0,0,?
+mxfp4,openai/gpt-oss-20b,yes,gpt_oss_mxfp4,,12.56,0.0,0,?

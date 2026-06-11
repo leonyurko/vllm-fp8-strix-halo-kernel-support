@@ -27,4 +27,11 @@ with the modifications described below:
     dequant-GEMV in fp8_triton.py (gated by env FP8_GEMV_DECODE, symmetric quant);
     falls back to the stock Triton GEMM for prefill / asymmetric / on error.
 
-fp8_triton.py and the scripts under bench/ are original work.
+- nvfp4_emulation_utils_patched.py
+    Original: vllm/model_executor/layers/quantization/utils/nvfp4_emulation_utils.py
+    (vLLM, Apache-2.0).
+    Modification: route M==1 (decode, swizzle=False) of run_nvfp4_emulations to the
+    fused FP4 dequant-GEMV in nvfp4_triton.py (gated by env NVFP4_GEMV), avoiding the
+    full-bf16-weight materialization; falls back to the stock emulation otherwise.
+
+fp8_triton.py, nvfp4_triton.py, and the scripts under bench/ are original work.

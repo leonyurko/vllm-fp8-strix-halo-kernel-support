@@ -112,3 +112,41 @@ average for ratios), not the arithmetic mean.
 FP8 on this hardware at all (no honest stock baseline). The INT8 table here is the
 cleaner comparison: vLLM ships a working int8 kernel, so it's a true ours-vs-theirs
 A/B on identical setup.
+
+## NVFP4 (4-bit) decode: fused FP4 GEMV vs vLLM's emulation
+
+gfx1151 has no FP4 hardware, so vLLM uses `EmulationNvFp4LinearKernel` —
+`run_nvfp4_emulations` **materializes the entire weight to bf16 every forward**
+(`dequantize_to_dtype` → dense `torch.matmul`). It reads 4 GB FP4 but then writes +
+re-reads ~16 GB bf16/token → unusable. Our fused FP4 dequant-GEMV (E2M1 decode +
+per-16 block scales, never materializing bf16; `NVFP4_GEMV` toggle) on
+Qwen3-8B-NVFP4:
+
+| path | tok/s |
+|---|---:|
+| `EmulationNvFp4LinearKernel` (stock) | 0.42 |
+| **ours (fused FP4 GEMV)** | **7.13** (**17×**) |
+
+Numerically validated (mean_rel 0.0017 vs `run_nvfp4_emulations`). 7.13 is still
+~13% of the ~64 FP4 floor — further block-size tuning + a profiling cycle should
+push it higher (see [ROADMAP](ROADMAP.md)). This is the highest-upside path
+(FP4 reads half the bytes of INT8 → highest ceiling).
+
+## Format survey (which paths are worth accelerating on gfx1151)
+
+A single-model recon (stock kernel, decode tok/s vs the bandwidth floor) across
+4-bit formats — the rule: only paths running well below floor are worth a kernel.
+Raw data: [`bench/results/format_recon_raw.csv`](../bench/results/format_recon_raw.csv).
+
+| format | stock kernel | % of floor | worth porting? |
+|---|---|---:|---|
+| **NVFP4** (`modelopt_fp4` / emulation) | software emulation | ~1% | ✅ done — 17× |
+| GPTQ-int4 | `gptq` (Marlin-class) | ~97% | ❌ near floor |
+| W4A16 non-act-order | `TritonW4A16` | ~84% | ❌ near floor |
+| W4A16 act-order | `Conch` | ~23% | ⚠️ slow, but needs g_idx + Conch layout |
+| AWQ-int4 | `awq_marlin` | ~54% | ⏳ moderate (~1.8×), not ported |
+| bitsandbytes NF4 | — | — | ❌ does not run on gfx1151 |
+
+Takeaway: mature INT4 kernels (GPTQ/Marlin) are already near the bandwidth floor;
+the wins are where vLLM has **no native kernel and falls back to emulation**
+(NVFP4) or a layout-pathological path (the W8A8 scaled_mm fix).

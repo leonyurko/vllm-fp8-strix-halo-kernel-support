@@ -1,18 +1,30 @@
 # Roadmap
 
-The FP8 path is done (9.24 tok/s). These are the next stages.
+## Done
 
-## 🚧 W8A8-INT8 (work in progress)
+- **FP8 W8A8** — 9.24 tok/s (rows-GEMV + HIP mem fix).
+- **W8A8-INT8** — up to 2.61× vs stock (geomean 1.5×, 9 models). Same rows-GEMV.
+- **NVFP4** — 0.42 → 7.13 tok/s = 17× (fused FP4 dequant-GEMV vs the bf16-
+  materializing emulation). Numerically validated.
 
-The decode bottleneck is **layout / memory-bandwidth-bound, not dtype-bound**, so
-the same rows-mapped GEMV applies almost verbatim to INT8:
+## 🚧 NVFP4 floor-chase (work in progress)
 
-- Swap the FP8→bf16 cast in the kernel prologue for an INT8 dequant
-  (`(b.to(bf16)) * weight_scale`), keeping the rows-mapped traversal and epilogue.
-- vLLM routes INT8 through a **different** `ScaledMMLinearKernel` than FP8, so
-  `pytorch_patched.py` needs an INT8 entry point patched too.
-- Expectation: same ~9 tok/s class (same bytes/token), and INT8 has a potential edge
-  via integer `tl.dot` accumulate if it ever helps on this arch.
+NVFP4 is at 7.13 tok/s but the kernel ceiling (~8.3) is still ~13% of the ~64 FP4
+floor — FP4 reads half the bytes of INT8, so this is the highest-ceiling path.
+- Profile the FP4 GEMV (rocprofv3) to find the structural wall (same playbook that
+  took W8A8 from 2→9), then sweep `BLOCK_N`/`BLOCK_K`/`num_warps`.
+- Fuse the activation FP4 round-trip into the kernel (currently caller-side; it's
+  only ~13% of the cost, so secondary).
+
+## 🚧 More formats
+
+- **AWQ-int4** — `awq_marlin` runs at ~54% of floor on gfx1151 → ~1.8× opportunity
+  (moderate); separate path to patch.
+- **act-order W4A16** — only `ConchLinearKernel` serves act-order (g_idx) models on
+  gfx1151, at ~23% of floor. A validated 4-bit rows-GEMV exists (`w4a16_triton.py`)
+  but the non-act-order TritonW4A16 path is already near floor; the win is the Conch
+  path, which needs **g_idx activation-reordering + Conch's uint8 layout**.
+- Mature INT4 (GPTQ/Marlin) are already near floor — not worth porting.
 
 ## 🚧 Generic quantization-format support / autotune-at-load (work in progress)
 

@@ -28,12 +28,24 @@ Full table + analysis in [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 | Qwen2.5-32B | 4.84 | 6.98 | 1.44× |
 | … | | | (see BENCHMARKS) |
 
+**NVFP4** (NVIDIA FP4, 4-bit) — gfx1151 has no FP4 hardware, so vLLM falls back to
+a software *emulation* that materializes the whole weight to bf16 every forward
+(~0.4 tok/s, unusable). A fused FP4 dequant-GEMV (E2M1 decode + per-16 block
+scales, never materializing bf16) takes it to:
+
+| path | tok/s |
+|---|---:|
+| `EmulationNvFp4LinearKernel` (stock) | 0.42 |
+| **ours (fused FP4 GEMV)** | **7.13** (**17×**, numerically validated) |
+
 Decode is memory-bandwidth-bound: weight bytes ÷ ~256 GB/s sets the ceiling
 (~11 tok/s for the 24B FP8). We land within ~15% of it. Full story + the math:
-[`docs/EXPLAINER.md`](docs/EXPLAINER.md).
+[`docs/EXPLAINER.md`](docs/EXPLAINER.md); per-format survey + methodology in
+[`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 
-> Status: **FP8 and W8A8-INT8 both work.** A generic autotune-at-load and broader
-> model coverage are **work in progress** — see [`docs/ROADMAP.md`](docs/ROADMAP.md).
+> Status: **FP8, W8A8-INT8, and NVFP4 all work.** NVFP4 has further headroom to the
+> FP4 floor; a generic autotune-at-load, AWQ, and act-order W4A16 are **work in
+> progress** — see [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Hardware / software
 
@@ -51,6 +63,8 @@ Decode is memory-bandwidth-bound: weight bytes ÷ ~256 GB/s sets the ceiling
 | [`fp8_triton.py`](fp8_triton.py) | the rows-mapped Triton dequant-GEMV (decode) + a tiled GEMM (prefill). **The speed.** |
 | [`pytorch_patched.py`](pytorch_patched.py) | **FP8**: replaces vLLM's `torch._scaled_mm` (unsupported on RDNA) → routes to `fp8_triton`. Modified from vLLM. |
 | [`triton_scaled_mm_patched.py`](triton_scaled_mm_patched.py) | **INT8**: routes the W8A8-INT8 decode path (`triton_scaled_mm`, M==1) → `fp8_triton`. Modified from vLLM. |
+| [`nvfp4_triton.py`](nvfp4_triton.py) | **NVFP4**: fused FP4 (E2M1) dequant-GEMV with per-16 block scales. Original work. |
+| [`nvfp4_emulation_utils_patched.py`](nvfp4_emulation_utils_patched.py) | **NVFP4**: routes the emulation path (`run_nvfp4_emulations`, M==1) → `nvfp4_triton`. Modified from vLLM. |
 | [`rocm_patched.py`](rocm_patched.py) | fixes the APU `hipMemGetInfo` bug: report `max(vram_total, gtt_total)` so vLLM sees the full pool. Modified from vLLM / the kyuz0 image. |
 
 Kernel config: `BLOCK_N=8, num_warps=8, BLOCK_K = largest power-of-two dividing K`.
