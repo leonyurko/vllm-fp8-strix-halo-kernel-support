@@ -20,4 +20,11 @@ with the modifications described below:
     mem_info_gtt_total and uses max(...), so the dedicated-VRAM BIOS layout reports
     the full pool (the stock patch read GTT only and broke that layout).
 
+- triton_scaled_mm_patched.py
+    Original: vllm/model_executor/layers/quantization/compressed_tensors/triton_scaled_mm.py
+    (vLLM, Apache-2.0).
+    Modification: route M==1 (decode) of the W8A8-INT8 path to the rows-mapped
+    dequant-GEMV in fp8_triton.py (gated by env FP8_GEMV_DECODE, symmetric quant);
+    falls back to the stock Triton GEMM for prefill / asymmetric / on error.
+
 fp8_triton.py and the scripts under bench/ are original work.

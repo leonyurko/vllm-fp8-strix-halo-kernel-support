@@ -7,6 +7,8 @@ A custom rows-mapped Triton **dequant-GEMV** + a HIP memory-reporting fix take a
 FP8 model from "vLLM refuses to run it" to **9.24 tok/s decode** — about the same as
 a Q8 GGUF in Ollama, but at the FP8 ~24 GB footprint.
 
+**FP8** (W8A8-FP8), 24B model:
+
 | stage | tok/s | fix |
 |---|---:|---|
 | bf16-upcast fallback | 1.3 | naive correctness (no FP8 hardware) |
@@ -14,12 +16,24 @@ a Q8 GGUF in Ollama, but at the FP8 ~24 GB footprint.
 | rows-mapped GEMV | 6.94 | fix DRAM page locality (down_proj 22→113 GB/s) |
 | **`num_warps=8`** | **9.24** | occupancy / memory-latency hiding |
 
-Decode is memory-bandwidth-bound: ~23 GB of weights ÷ ~256 GB/s ≈ 90 ms/token ≈ an
-**11 tok/s ceiling**. We land within ~15% of it. Full story + the math:
+**INT8** (W8A8-INT8) — same kernel, vs vLLM's stock Triton int8 GEMM, swept over
+9 public models (0.5B–32B): **faster on 8/9, up to 2.61×, geomean ≈ 1.50×.**
+Full table + analysis in [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
+
+| model | stock tok/s | ours tok/s | speedup |
+|---|---:|---:|---:|
+| Mistral-7B-v0.3 | 11.2 | 29.2 | **2.61×** |
+| Llama-3.2-1B | 61.4 | 115.0 | 1.87× |
+| Qwen2.5-14B | 10.2 | 15.1 | 1.48× |
+| Qwen2.5-32B | 4.84 | 6.98 | 1.44× |
+| … | | | (see BENCHMARKS) |
+
+Decode is memory-bandwidth-bound: weight bytes ÷ ~256 GB/s sets the ceiling
+(~11 tok/s for the 24B FP8). We land within ~15% of it. Full story + the math:
 [`docs/EXPLAINER.md`](docs/EXPLAINER.md).
 
-> ⚠️ Status: **FP8 works (9.24 tok/s).** W8A8-INT8 and a generic
-> autotune-at-load are **work in progress** — see [`docs/ROADMAP.md`](docs/ROADMAP.md).
+> Status: **FP8 and W8A8-INT8 both work.** A generic autotune-at-load and broader
+> model coverage are **work in progress** — see [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Hardware / software
 
@@ -35,7 +49,8 @@ Decode is memory-bandwidth-bound: ~23 GB of weights ÷ ~256 GB/s ≈ 90 ms/token
 | file | what it does |
 |---|---|
 | [`fp8_triton.py`](fp8_triton.py) | the rows-mapped Triton dequant-GEMV (decode) + a tiled GEMM (prefill). **The speed.** |
-| [`pytorch_patched.py`](pytorch_patched.py) | replaces vLLM's `torch._scaled_mm` (unsupported on RDNA) → routes to `fp8_triton`. Modified from vLLM. |
+| [`pytorch_patched.py`](pytorch_patched.py) | **FP8**: replaces vLLM's `torch._scaled_mm` (unsupported on RDNA) → routes to `fp8_triton`. Modified from vLLM. |
+| [`triton_scaled_mm_patched.py`](triton_scaled_mm_patched.py) | **INT8**: routes the W8A8-INT8 decode path (`triton_scaled_mm`, M==1) → `fp8_triton`. Modified from vLLM. |
 | [`rocm_patched.py`](rocm_patched.py) | fixes the APU `hipMemGetInfo` bug: report `max(vram_total, gtt_total)` so vLLM sees the full pool. Modified from vLLM / the kyuz0 image. |
 
 Kernel config: `BLOCK_N=8, num_warps=8, BLOCK_K = largest power-of-two dividing K`.

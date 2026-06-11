@@ -1,0 +1,10 @@
+model,baseline_tok_s,ours_tok_s,speedup,kernel
+RedHatAI/Qwen2.5-0.5B-Instruct-quantized.w8a8,144.64,142.52,0.99,TritonInt8ScaledMMLinearKernel
+RedHatAI/Llama-3.2-1B-Instruct-quantized.w8a8,61.36,115.00,1.87,TritonInt8ScaledMMLinearKernel
+RedHatAI/Qwen2.5-1.5B-Instruct-quantized.w8a8,84.68,100.78,1.19,TritonInt8ScaledMMLinearKernel
+RedHatAI/Qwen2.5-3B-Instruct-quantized.w8a8,34.14,54.63,1.60,TritonInt8ScaledMMLinearKernel
+RedHatAI/Llama-3.2-3B-Instruct-quantized.w8a8,29.31,51.64,1.76,TritonInt8ScaledMMLinearKernel
+RedHatAI/Mistral-7B-Instruct-v0.3-quantized.w8a8,11.19,29.24,2.61,TritonInt8ScaledMMLinearKernel
+RedHatAI/Qwen2.5-7B-Instruct-quantized.w8a8,25.37,29.18,1.15,TritonInt8ScaledMMLinearKernel
+RedHatAI/Qwen2.5-14B-Instruct-quantized.w8a8,10.22,15.12,1.48,TritonInt8ScaledMMLinearKernel
+RedHatAI/Qwen2.5-32B-Instruct-quantized.w8a8,4.84,6.98,1.44,TritonInt8ScaledMMLinearKernel
